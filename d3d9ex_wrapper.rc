@@ -1,0 +1,34 @@
+﻿#include <windows.h>
+
+1 VERSIONINFO
+FILEVERSION 10,0,19041,5794
+PRODUCTVERSION 10,0,19041,5794
+FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+FILEFLAGS 0x1L
+#else
+FILEFLAGS 0x0L
+#endif
+FILEOS 0x40004L
+FILETYPE 0x2L
+FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "Microsoft Corporation"
+            VALUE "FileDescription", "Direct3D 9 Runtime"
+            VALUE "FileVersion", "10.0.19041.5794 (WinBuild.160101.0800)"
+            VALUE "InternalName", "D3D9.dll"
+            VALUE "LegalCopyright", "© Microsoft Corporation. All rights reserved."
+            VALUE "OriginalFilename", "D3D9.dll"
+            VALUE "ProductName", "Microsoft® Windows® Operating System"
+            VALUE "ProductVersion", "10.0.19041.5794"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 0x04B0
+    END
+END
