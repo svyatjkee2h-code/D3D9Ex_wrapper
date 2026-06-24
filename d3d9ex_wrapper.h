@@ -1,60 +1,27 @@
+// d3d9ex_wrapper.h
 #ifndef D3D9EX_WRAPPER_H
 #define D3D9EX_WRAPPER_H
 
 #include <d3d9.h>
 #include <windows.h>
-#include <map>
-
-typedef IDirect3D9* (WINAPI* Direct3DCreate9_t)(UINT SDKVersion);
-
-typedef HRESULT (WINAPI* CheckFullscreen_t)(UINT Adapter, HWND hWnd, DWORD dwFlags);
-typedef void* (WINAPI* Direct3DShaderValidatorCreate9_t)();
-typedef HRESULT (WINAPI* PSGPError_t)(void* pDevice, DWORD Error, DWORD Value);
-typedef HRESULT (WINAPI* PSGPSampleTexture_t)(void* pDevice, DWORD Stage, float* pCoord, DWORD Flags, float* pColor);
-
-typedef int     (WINAPI* D3DPERF_BeginEvent_t)(D3DCOLOR color, LPCWSTR name);
-typedef int     (WINAPI* D3DPERF_EndEvent_t)();
-typedef DWORD   (WINAPI* D3DPERF_GetStatus_t)();
-typedef BOOL    (WINAPI* D3DPERF_QueryRepeatFrame_t)();
-typedef void    (WINAPI* D3DPERF_SetMarker_t)(D3DCOLOR color, LPCWSTR name);
-typedef void    (WINAPI* D3DPERF_SetOptions_t)(DWORD options);
-typedef void    (WINAPI* D3DPERF_SetRegion_t)(D3DCOLOR color, LPCWSTR name);
-
-typedef void    (WINAPI* DebugSetLevel_t)(int level, int mute);
-typedef void    (WINAPI* DebugSetMute_t)();
-
-extern Direct3DCreate9_t                Direct3DCreate9_original;
-extern CheckFullscreen_t                CheckFullscreen_original;
-extern Direct3DShaderValidatorCreate9_t Direct3DShaderValidatorCreate9_original;
-extern PSGPError_t                      PSGPError_original;
-extern PSGPSampleTexture_t              PSGPSampleTexture_original;
-extern D3DPERF_BeginEvent_t             D3DPERF_BeginEvent_original;
-extern D3DPERF_EndEvent_t               D3DPERF_EndEvent_original;
-extern D3DPERF_GetStatus_t              D3DPERF_GetStatus_original;
-extern D3DPERF_QueryRepeatFrame_t       D3DPERF_QueryRepeatFrame_original;
-extern D3DPERF_SetMarker_t              D3DPERF_SetMarker_original;
-extern D3DPERF_SetOptions_t             D3DPERF_SetOptions_original;
-extern D3DPERF_SetRegion_t              D3DPERF_SetRegion_original;
-extern DebugSetLevel_t                  DebugSetLevel_original;
-extern DebugSetMute_t                   DebugSetMute_original;
 
 class MyDirect3D9Ex : public IDirect3D9Ex {
 private:
     IDirect3D9* m_pD3D9;
     ULONG m_refCount;
-    bool m_isExD3D9;
+	bool m_isExD3D9;
 
 public:
     MyDirect3D9Ex(IDirect3D9* pD3D9, bool isEx);
     virtual ~MyDirect3D9Ex();
-    bool IsExD3D9() const { return m_isExD3D9; }
+	bool IsExD3D9() const { return m_isExD3D9; }
 
-    // IUnknown
+    // IUnknown methods
     STDMETHOD(QueryInterface)(REFIID riid, void** ppvObj);
     STDMETHOD_(ULONG, AddRef)();
     STDMETHOD_(ULONG, Release)();
 
-    // IDirect3D9
+    // IDirect3D9 methods
     STDMETHOD(RegisterSoftwareDevice)(void* pInitializeFunction);
     STDMETHOD_(UINT, GetAdapterCount)();
     STDMETHOD(GetAdapterIdentifier)(UINT Adapter, DWORD Flags, D3DADAPTER_IDENTIFIER9* pIdentifier);
@@ -70,15 +37,13 @@ public:
     STDMETHOD_(HMONITOR, GetAdapterMonitor)(UINT Adapter);
     STDMETHOD(CreateDevice)(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface);
 
-    // IDirect3D9Ex
+    // IDirect3D9Ex methods
     STDMETHOD_(UINT, GetAdapterModeCountEx)(UINT Adapter, const D3DDISPLAYMODEFILTER* pFilter);
     STDMETHOD(EnumAdapterModesEx)(UINT Adapter, const D3DDISPLAYMODEFILTER* pFilter, UINT Mode, D3DDISPLAYMODEEX* pMode);
     STDMETHOD(GetAdapterDisplayModeEx)(UINT Adapter, D3DDISPLAYMODEEX* pMode, D3DDISPLAYROTATION* pRotation);
     STDMETHOD(CreateDeviceEx)(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface);
     STDMETHOD(GetAdapterLUID)(UINT Adapter, LUID* pLUID);
 };
-
-class MyDirect3DSwapChain9Ex;
 
 class MyDirect3DDevice9Ex : public IDirect3DDevice9Ex {
 private:
@@ -88,24 +53,20 @@ private:
     INT m_gpuThreadPriority;
     UINT m_maxFrameLatency;
     DWORD m_OriginalBehaviorFlags;
-    bool m_isExD3D9;
-    std::map<IDirect3DSwapChain9*, MyDirect3DSwapChain9Ex*> m_swapChainWrappers;
-
+	bool m_isExD3D9;
+	class MyDirect3DSwapChain9Ex* m_pImplicitSwapChain;
 public:
-    MyDirect3DDevice9Ex(IDirect3DDevice9* pDevice, MyDirect3D9Ex* pD3D9Ex, DWORD originalBehaviorFlags, bool isEx);
+    MyDirect3DDevice9Ex(IDirect3DDevice9* pDevice, MyDirect3D9Ex* pD3D9Ex, 
+                        DWORD originalBehaviorFlags, bool isEx);
+    bool IsExDevice() const { return m_isExD3D9; }
     virtual ~MyDirect3DDevice9Ex();
 
-    bool IsExDevice() const { return m_isExD3D9; }
-    bool m_lastWindowed;
-
-    void RemoveSwapChainWrapper(IDirect3DSwapChain9* pOrig);
-
-    // IUnknown
+    // IUnknown methods
     STDMETHOD(QueryInterface)(REFIID riid, void** ppvObj);
     STDMETHOD_(ULONG, AddRef)();
     STDMETHOD_(ULONG, Release)();
 
-    // IDirect3DDevice9
+    // IDirect3DDevice9 methods
     STDMETHOD(TestCooperativeLevel)();
     STDMETHOD_(UINT, GetAvailableTextureMem)();
     STDMETHOD(EvictManagedResources)();
@@ -223,7 +184,7 @@ public:
     STDMETHOD(DeletePatch)(UINT Handle);
     STDMETHOD(CreateQuery)(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery);
 
-    // IDirect3DDevice9Ex
+    // IDirect3DDevice9Ex methods
     STDMETHOD(SetConvolutionMonoKernel)(UINT width, UINT height, float* rows, float* columns);
     STDMETHOD(ComposeRects)(IDirect3DSurface9* pSrc, IDirect3DSurface9* pDst, IDirect3DVertexBuffer9* pSrcRectDescs, UINT NumRects, IDirect3DVertexBuffer9* pDstRectDescs, D3DCOMPOSERECTSOP Operation, int Xoffset, int Yoffset);
     STDMETHOD(PresentEx)(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags);
@@ -251,15 +212,18 @@ public:
     MyDirect3DSwapChain9Ex(IDirect3DSwapChain9* pSwapChain, MyDirect3DDevice9Ex* pDeviceEx, bool isExDevice);
     virtual ~MyDirect3DSwapChain9Ex();
 
+
     // IUnknown
     STDMETHOD(QueryInterface)(REFIID riid, void** ppvObj);
     STDMETHOD_(ULONG, AddRef)();
     STDMETHOD_(ULONG, Release)();
 
     // IDirect3DSwapChain9
-    STDMETHOD(Present)(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags);
+    STDMETHOD(Present)(const RECT* pSourceRect, const RECT* pDestRect,
+                       HWND hDestWindowOverride, const RGNDATA* pDirtyRegion, DWORD dwFlags);
     STDMETHOD(GetFrontBufferData)(IDirect3DSurface9* pDestSurface);
-    STDMETHOD(GetBackBuffer)(UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer);
+    STDMETHOD(GetBackBuffer)(UINT iBackBuffer, D3DBACKBUFFER_TYPE Type,
+                             IDirect3DSurface9** ppBackBuffer);
     STDMETHOD(GetRasterStatus)(D3DRASTER_STATUS* pRasterStatus);
     STDMETHOD(GetDisplayMode)(D3DDISPLAYMODE* pMode);
     STDMETHOD(GetDevice)(IDirect3DDevice9** ppDevice);
