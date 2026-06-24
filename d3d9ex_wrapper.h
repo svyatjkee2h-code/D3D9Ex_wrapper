@@ -1,4 +1,4 @@
-﻿#ifndef D3D9EX_WRAPPER_H
+#ifndef D3D9EX_WRAPPER_H
 #define D3D9EX_WRAPPER_H
 
 #include <d3d9.h>
