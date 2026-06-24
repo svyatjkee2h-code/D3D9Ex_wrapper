@@ -1,4 +1,4 @@
-﻿#include "d3d9ex_wrapper.h"
+#include "d3d9ex_wrapper.h"
 #include <windows.h>
 #include <cassert>
 #include <string>
@@ -290,14 +290,14 @@ MyDirect3D9Ex::~MyDirect3D9Ex() {
 
 HRESULT MyDirect3D9Ex::QueryInterface(REFIID riid, void** ppvObj) {
     if (!ppvObj) return E_POINTER;
-    *ppvObj = nullptr;
-
-    if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_IDirect3D9) || IsEqualIID(riid, IID_IDirect3D9Ex)) {
+    
+    if (riid == IID_IUnknown || riid == IID_IDirect3D9 || riid == IID_IDirect3D9Ex) {
         *ppvObj = static_cast<IDirect3D9Ex*>(this);
         AddRef();
         return S_OK;
     }
 
+    *ppvObj = nullptr;
     if (m_pD3D9) return m_pD3D9->QueryInterface(riid, ppvObj);
     return E_NOINTERFACE;
 }
@@ -475,14 +475,14 @@ void MyDirect3DDevice9Ex::RemoveSwapChainWrapper(IDirect3DSwapChain9* pOrig) {
 
 HRESULT MyDirect3DDevice9Ex::QueryInterface(REFIID riid, void** ppvObj) {
     if (!ppvObj) return E_POINTER;
-    *ppvObj = nullptr;
-
-    if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_IDirect3DDevice9) || IsEqualIID(riid, IID_IDirect3DDevice9Ex)) {
+    
+    if (riid == IID_IUnknown || riid == IID_IDirect3DDevice9 || riid == IID_IDirect3DDevice9Ex) {
         *ppvObj = static_cast<IDirect3DDevice9Ex*>(this);
         AddRef();
         return S_OK;
     }
 
+    *ppvObj = nullptr;
     if (m_pDevice) return m_pDevice->QueryInterface(riid, ppvObj);
     return E_NOINTERFACE;
 }
@@ -717,17 +717,26 @@ HRESULT MyDirect3DDevice9Ex::ComposeRects(IDirect3DSurface9* pSrc, IDirect3DSurf
     if (!pSrc || !pDst || !pSrcRectDescs || !pDstRectDescs || NumRects == 0) return D3DERR_INVALIDCALL;
     if (Operation != D3DCOMPOSERECTS_COPY) return D3DERR_NOTAVAILABLE;
 
+    D3DSURFACE_DESC dstDesc;
+    pDst->GetDesc(&dstDesc);
+    const LONG maxDstW = static_cast<LONG>(dstDesc.Width);
+    const LONG maxDstH = static_cast<LONG>(dstDesc.Height);
+
     struct ComposRectDesc { USHORT X, Y, Width, Height; };
     ComposRectDesc* pSrcDescs = nullptr;
     ComposRectDesc* pDstDescs = nullptr;
 
-    HRESULT hr = pSrcRectDescs->Lock(0, NumRects * sizeof(ComposRectDesc), reinterpret_cast<void**>(&pSrcDescs), D3DLOCK_READONLY);
-    if (FAILED(hr)) return hr;
-    hr = pDstRectDescs->Lock(0, NumRects * sizeof(ComposRectDesc), reinterpret_cast<void**>(&pDstDescs), D3DLOCK_READONLY);
-    if (FAILED(hr)) { pSrcRectDescs->Unlock(); return hr; }
+    DWORD lockFlags = D3DLOCK_READONLY | D3DLOCK_NOSYSLOCK;
+    UINT lockSize = NumRects * sizeof(ComposRectDesc);
 
-    D3DSURFACE_DESC dstDesc;
-    pDst->GetDesc(&dstDesc);
+    HRESULT hr = pSrcRectDescs->Lock(0, lockSize, reinterpret_cast<void**>(&pSrcDescs), lockFlags);
+    if (FAILED(hr)) return hr;
+    
+    hr = pDstRectDescs->Lock(0, lockSize, reinterpret_cast<void**>(&pDstDescs), lockFlags);
+    if (FAILED(hr)) { 
+        pSrcRectDescs->Unlock(); 
+        return hr; 
+    }
 
     for (UINT i = 0; i < NumRects; ++i) {
         RECT src = { pSrcDescs[i].X, pSrcDescs[i].Y, pSrcDescs[i].X + pSrcDescs[i].Width, pSrcDescs[i].Y + pSrcDescs[i].Height };
@@ -735,11 +744,14 @@ HRESULT MyDirect3DDevice9Ex::ComposeRects(IDirect3DSurface9* pSrc, IDirect3DSurf
 
         if (dst.left < 0) dst.left = 0;
         if (dst.top < 0) dst.top = 0;
-        if (dst.right > static_cast<LONG>(dstDesc.Width)) dst.right = static_cast<LONG>(dstDesc.Width);
-        if (dst.bottom > static_cast<LONG>(dstDesc.Height)) dst.bottom = static_cast<LONG>(dstDesc.Height);
+        if (dst.right > maxDstW) dst.right = maxDstW;
+        if (dst.bottom > maxDstH) dst.bottom = maxDstH;
 
         LONG dstW = dst.right - dst.left;
         LONG dstH = dst.bottom - dst.top;
+
+        if (dstW <= 0 || dstH <= 0) continue;
+
         src.right = src.left + dstW;
         src.bottom = src.top + dstH;
 
@@ -747,8 +759,8 @@ HRESULT MyDirect3DDevice9Ex::ComposeRects(IDirect3DSurface9* pSrc, IDirect3DSurf
         if (FAILED(hr)) break;
     }
 
-    pSrcRectDescs->Unlock();
     pDstRectDescs->Unlock();
+    pSrcRectDescs->Unlock();
     return hr;
 }
 
@@ -760,7 +772,10 @@ HRESULT MyDirect3DDevice9Ex::PresentEx(const RECT* pSourceRect, const RECT* pDes
     }
 
     HRESULT hr = m_pDevice->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
-    if (FAILED(hr)) { hr = m_pDevice->Present(NULL, NULL, NULL, NULL); }
+    
+    if (hr == D3DERR_INVALIDCALL && (pSourceRect || pDestRect)) { 
+        hr = m_pDevice->Present(nullptr, nullptr, hDestWindowOverride, pDirtyRegion); 
+    }
     return hr;
 }
 
@@ -859,24 +874,25 @@ MyDirect3DSwapChain9Ex::~MyDirect3DSwapChain9Ex() {
 
 HRESULT MyDirect3DSwapChain9Ex::QueryInterface(REFIID riid, void **ppvObj) {
     if (!ppvObj) return E_POINTER;
-    *ppvObj = nullptr;
 
-    if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_IDirect3DSwapChain9)) {
+    if (riid == IID_IUnknown || riid == IID_IDirect3DSwapChain9) {
         *ppvObj = static_cast<IDirect3DSwapChain9*>(this);
         AddRef();
         return S_OK;
     }
 
-    if (IsEqualIID(riid, IID_IDirect3DSwapChain9Ex)) {
+    if (riid == IID_IDirect3DSwapChain9Ex) {
         if (m_isExDevice) {
             *ppvObj = static_cast<IDirect3DSwapChain9Ex*>(this);
             AddRef();
             return S_OK;
         } else {
+            *ppvObj = nullptr;
             return E_NOINTERFACE;
         }
     }
 
+    *ppvObj = nullptr;
     if (m_pSwapChain) return m_pSwapChain->QueryInterface(riid, ppvObj);
     return E_NOINTERFACE;
 }
