@@ -536,6 +536,8 @@ HRESULT MyDirect3DDevice9Ex::GetSwapChain(UINT iSwapChain, IDirect3DSwapChain9**
         return E_OUTOFMEMORY;
     }
 
+    realSC->Release();
+
     if (iSwapChain == 0) {
         m_pImplicitSwapChain = wrapper;
         m_pImplicitSwapChain->AddRef(); 
@@ -894,7 +896,7 @@ MyDirect3DSwapChain9Ex::MyDirect3DSwapChain9Ex(IDirect3DSwapChain9* pSwapChain,
     , m_isExDevice(isExDevice)
 {
     if (m_pSwapChain)
-        m_pSwapChain;
+        m_pSwapChain->AddRef();
 }
 
 MyDirect3DSwapChain9Ex::~MyDirect3DSwapChain9Ex()
